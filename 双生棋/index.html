@@ -1,0 +1,1252 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#181a1b">
+<title>双生棋 · 残局</title>
+<style>
+:root{color-scheme:dark;--bg:#181a1b;--panel:#222526;--panel2:#292d2e;--line:#555b5b;--paper:#d8d2c2;--muted:#989a94;--red:#a95050;--red2:#713c3c;--gold:#ab9665;--anim-time:1}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--paper);font:14px/1.5 "Microsoft YaHei","Noto Sans SC",sans-serif}
+body.motion-off *,body.motion-off *:before,body.motion-off *:after{animation-duration:0s!important;transition-duration:0s!important}
+button,select{font:inherit;color:inherit}
+button{cursor:pointer}
+.app{max-width:1480px;margin:auto;padding:16px 22px 24px}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;border-bottom:1px solid #444949;padding:4px 0 14px;margin-bottom:16px}
+.brand{display:flex;align-items:baseline;gap:12px}.brand h1{font-size:21px;letter-spacing:.2em;margin:0;font-weight:600}.brand .eyebrow{color:var(--muted);font-size:11px;letter-spacing:.18em}
+.status-strip{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}.status-chip,.tag{border:1px solid #454a49;padding:5px 9px;border-radius:3px;color:#c6c2b5;background:#202323;font-size:12px}.status-chip strong{color:#eee7d7;font-weight:600;margin-left:4px}.status-chip.active{border-color:#9b5551;color:#e4b7aa}
+.layout{display:grid;grid-template-columns:minmax(210px,250px) minmax(430px,680px) minmax(220px,280px);gap:16px;align-items:start}
+.panel{background:var(--panel);border:1px solid #3b4141;border-radius:4px;padding:14px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin:0 0 10px;font-size:14px;font-weight:600}.panel-head small{font-size:10px;color:var(--muted);font-weight:400;letter-spacing:.12em}
+.subtle{font-size:12px;color:var(--muted)}.section-gap{margin-top:14px}.accent{color:#c6a889}.red-text{color:#d39b8e}
+.board-wrap{min-width:0}.board-topline{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.board-shell{position:relative;padding:16px;background:#282c2d;border:1px solid #65645b;border-radius:3px;box-shadow:inset 0 0 0 5px #202323}
+.board{position:relative;width:100%;aspect-ratio:9/11;display:grid;grid-template-columns:repeat(9,1fr);grid-template-rows:repeat(11,1fr);background:#333735;overflow:hidden;touch-action:manipulation}
+.cell{position:relative;border:1px solid rgba(220,214,196,.58);background:transparent;padding:0;min-width:0;z-index:1}
+.river-cell{grid-row:6;border-left:1px solid rgba(220,214,196,.58);border-right:1px solid rgba(220,214,196,.58);pointer-events:none}
+.cell:focus-visible{outline:2px solid #d5c7a2;outline-offset:-3px}
+.river-label{position:absolute;z-index:2;top:45.45%;height:9.1%;width:100%;display:flex;align-items:center;justify-content:center;letter-spacing:1.6em;padding-left:1.6em;font-size:clamp(10px,1.8vw,15px);color:rgba(218,211,194,.58);pointer-events:none}
+.piece{position:absolute;width:9.2%;height:7.3%;z-index:4;border:2px solid #aaa48f;border-radius:50%;padding:0;display:grid;place-items:center;overflow:hidden;transform:translate(-50%,-50%);left:calc((var(--x) + .5)*100%/9);top:calc((var(--grid-y) + .5)*100%/11);transition:left calc(240ms * var(--anim-time)) cubic-bezier(.2,.72,.24,1),top calc(240ms * var(--anim-time)) cubic-bezier(.2,.72,.24,1),opacity .35s ease,filter .35s ease;background:#292d2d;color:#e7dfca}
+.piece.red{border-color:#bb8176;background:#553d3b}.piece.black{border-color:#a6a394;background:#393d3b}.piece.selected{outline:2px solid #e0d5b9;outline-offset:2px}.piece.module-equipped:before{content:attr(data-module-mark);position:absolute;z-index:2;right:-1px;top:-2px;border-radius:0 0 0 5px;padding:0 3px;background:#222;color:#d4c39d;font-size:9px;line-height:14px}
+.piece.check{animation:check-breathe 2.4s ease-in-out infinite;border-color:rgba(172,77,69,.4)}
+@keyframes check-breathe{0%,100%{box-shadow:0 0 0 0 rgba(153,63,59,.05)}50%{box-shadow:0 0 0 5px rgba(153,63,59,.2)}}
+.portrait{position:absolute;inset:2px;width:calc(100% - 4px);height:calc(100% - 4px);object-fit:cover;border-radius:50%;opacity:.82;filter:grayscale(.25);pointer-events:none}
+.piece-label{position:relative;z-index:1;font-family:serif;font-weight:700;font-size:clamp(13px,2.1vw,22px);text-shadow:0 1px 2px #171919;color:#e8dfc7}.piece.black .piece-label{color:#d3d0c3}
+.piece.disappear{animation:vanish .38s ease-in forwards}.piece.shatter{animation:shatter 2.2s ease-in forwards}
+@keyframes vanish{to{opacity:0;transform:translate(-50%,-50%) rotateY(90deg) scale(.7)}}
+@keyframes shatter{0%{opacity:1;filter:none;transform:translate(-50%,-50%) rotate(0) scale(1)}70%{opacity:.4;filter:grayscale(1);transform:translate(-50%,-50%) rotate(25deg) scale(.8)}100%{opacity:0;filter:grayscale(1);transform:translate(-50%,-50%) rotate(60deg) scale(.3)}}
+.cell.hint:after{content:"";position:absolute;width:20%;height:20%;left:40%;top:40%;border-radius:50%;background:rgba(227,219,196,.4);pointer-events:none}
+.cell.capture-hint:after{content:"";position:absolute;inset:9%;border:2px solid rgba(183,112,96,.4);border-radius:50%;pointer-events:none}
+.cell.selected-cell:after{content:"";position:absolute;inset:7%;border:1px solid rgba(236,226,199,.4);border-radius:50%;pointer-events:none}
+.board-overlay{position:absolute;inset:0;z-index:8;pointer-events:none;display:none}.board-overlay.show{display:block}
+.dim-field{position:absolute;inset:0;background:rgba(8,10,10,.4);pointer-events:none}
+.focus-ring{position:absolute;width:10%;height:9%;border:1px solid rgba(190,166,107,.4);border-radius:50%;transform:translate(-50%,-50%);pointer-events:none}
+.ink-line{position:absolute;height:1px;background:rgba(174,151,98,.4);transform-origin:left center;pointer-events:none}
+.particle{position:absolute;width:3px;height:3px;background:rgba(191,169,121,.4);border-radius:50%;animation:drift 1.1s ease-out forwards;pointer-events:none}
+@keyframes drift{to{transform:translate(var(--dx),var(--dy)) scale(.25);opacity:0}}
+.ink-echo{position:absolute;border:1px solid rgba(171,160,132,.4);border-radius:50%;transform:translate(-50%,-50%);animation:ripple .65s ease-out forwards;pointer-events:none}
+@keyframes ripple{to{width:90px;height:90px;opacity:0}}
+.board.rewinding{filter:grayscale(.65);transition:filter .7s ease}
+.lock-mark{position:absolute;width:22px;height:22px;border:1px solid rgba(173,82,73,.4);border-radius:3px;display:grid;place-items:center;background:rgba(87,45,43,.4);color:#e0b0a2;font-size:12px;pointer-events:none}
+.board-meta{display:flex;justify-content:space-between;gap:8px;margin-top:8px;color:#a6a79f;font-size:11px}
+.build-layout{grid-template-columns:minmax(215px,265px) minmax(430px,680px) minmax(220px,280px)}
+.module-list{display:grid;gap:7px}.module-card{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px;border:1px solid #414746;background:#292d2e;text-align:left;border-radius:3px}.module-card:hover,.module-card.active,.module-card.info-active{border-color:#ac8c68;background:#303231}.module-card.disabled{opacity:.65;cursor:not-allowed}.module-main{display:flex;align-items:center;gap:9px}.module-icon{width:27px;height:27px;border:1px solid #716c5e;border-radius:50%;display:grid;place-items:center;font-family:Georgia,serif;color:#d6c6a4}.module-name{font-weight:600;font-size:12px}.module-meta{display:block;font-size:10px;color:#a6a59d}.cost{font-size:11px;color:#d5c7a2;white-space:nowrap}
+.module-detail{min-height:110px;margin-top:8px;padding:10px;border:1px solid #514c40;background:#242827;color:#b8b5a9;font-size:11px;line-height:1.55}.module-detail strong{color:#d8c8a4;font-weight:600}.module-detail-title{font-size:13px;color:#e0d7c2;margin-bottom:5px}.module-detail p{margin:4px 0}.module-detail .module-unavailable{color:#d29a8c}
+.budget{display:flex;align-items:baseline;justify-content:space-between;margin:12px 0 10px;padding:9px;background:#1f2222;border-left:2px solid var(--gold)}.budget strong{font-size:20px;font-variant-numeric:tabular-nums;transition:color .25s}.budget strong.bump{color:#d7b36e}
+.btn{border:1px solid #575c59;background:#303433;border-radius:3px;padding:7px 10px;color:#e1ddcf;transition:background .16s,border-color .16s}.btn:hover{background:#3a3f3d;border-color:#898273}.btn.primary{border-color:#8d554d;background:#713f3b}.btn.primary:hover{background:#82504a}.btn.small{font-size:11px;padding:5px 8px}.btn:disabled{opacity:.42;cursor:not-allowed}.btn-row{display:flex;gap:7px;flex-wrap:wrap}
+.module-counts{display:grid;grid-template-columns:repeat(2,1fr);gap:5px}.module-count{font-size:10px;color:#b8b5a9;padding:5px;border:1px solid #3e4442;background:#252929}
+.side-stack{display:grid;gap:12px}.info-name{font-size:18px;font-weight:600}.info-row{display:grid;grid-template-columns:75px 1fr;gap:8px;padding:7px 0;border-bottom:1px solid #383d3c;font-size:12px}.info-row span:first-child{color:#969991}.skill-card{padding:9px;background:#292d2d;border:1px solid #414745;margin-top:8px}.skill-title{display:flex;justify-content:space-between;gap:6px;font-size:12px;font-weight:600}.skill-desc{font-size:11px;color:#b3b0a5;margin-top:5px}
+.quick-skills{display:flex;gap:6px;flex-wrap:wrap}.skill-btn{font-size:11px;padding:6px 8px;border:1px solid #4a504e;background:#292d2d;border-radius:3px}.skill-btn.ready{border-color:#81704c}.skill-btn.active{background:#514937;border-color:#b59b65}.skill-btn:disabled{opacity:.4;cursor:not-allowed}
+.skill-guide{margin-top:10px;border-top:1px solid #3c4240;padding-top:8px}.skill-guide summary{cursor:pointer;color:#d0c8b3;font-size:11px}.skill-guide-list{display:grid;gap:6px;margin-top:8px}.skill-guide-item{padding:6px 7px;background:#252929;border-left:2px solid #766747}.skill-guide-item strong{display:block;color:#d6c7a5;font-size:11px;font-weight:600}.skill-guide-item span{display:block;color:#aaa99f;font-size:10px;line-height:1.45;margin-top:2px}
+.log{height:170px;overflow:auto;background:#1c1f1f;border:1px solid #3a3f3e;padding:7px;font-size:11px}.log-line{padding:4px 3px;border-bottom:1px solid rgba(100,105,98,.18);color:#b8b6ab}.log-line time{color:#807f76;margin-right:6px}.log-line .log-red{color:#c48a7d}
+.footer{margin-top:15px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:10px 12px;border:1px solid #363b3b;background:#202323;border-radius:3px}.settings{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.settings label{font-size:11px;color:#aaa99f}.settings select{background:#292d2d;border:1px solid #4d5351;padding:5px 7px;border-radius:3px}
+.notice{min-height:20px;margin-top:8px;color:#c4aa7f;font-size:11px}
+.stage{display:none}.stage.active{display:block}
+.modal-backdrop{position:fixed;inset:0;z-index:20;background:rgba(8,10,10,.76);display:none;align-items:center;justify-content:center;padding:20px}.modal-backdrop.open{display:flex}
+.modal{max-width:440px;width:100%;padding:20px;background:#252929;border:1px solid #77705d;box-shadow:0 12px 40px rgba(0,0,0,.24)}.modal h2{margin:0 0 9px;font-size:17px}.modal p{color:#c2beb0;font-size:13px}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.sacrifice-banner{position:absolute;z-index:10;left:8px;right:8px;top:8px;display:none;align-items:center;justify-content:space-between;background:rgba(26,28,27,.9);padding:5px 8px;border:1px solid rgba(172,151,104,.48);font-size:11px}.sacrifice-banner.show{display:flex}
+.outcome{padding:12px;border:1px solid #806c54;background:#262925;margin-bottom:10px}.outcome h2{margin:0 0 3px;font-size:18px}
+.hidden{display:none!important}
+@media(max-width:1100px){.layout,.build-layout{grid-template-columns:minmax(190px,240px) minmax(400px,1fr)}.right-column{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}}
+@media(max-width:700px){.app{padding:10px}.topbar{align-items:flex-start;flex-direction:column}.status-strip{justify-content:flex-start}.layout,.build-layout{grid-template-columns:1fr}.board-wrap{grid-row:1}.right-column{grid-column:auto;display:block}.board-shell{padding:9px}.piece{width:9.8%;height:7.8%}.brand h1{font-size:18px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><h1>双生棋</h1><span class="eyebrow">巴别塔遗产 · 残局沙盘</span></div>
+    <div class="status-strip" id="statusStrip"></div>
+  </header>
+
+  <section class="stage active" id="buildStage">
+    <div class="layout build-layout">
+      <aside class="panel">
+        <h2 class="panel-head">唤醒构筑 <small>意识容量 · 12</small></h2>
+        <div class="subtle">为红方棋子安装身份模块。点选模块后，再点棋盘上的对应棋子；也可拖拽模块至棋子。</div>
+        <div class="budget"><span>意识容量</span><strong id="budgetValue">12</strong><span class="subtle">/ 12 点</span></div>
+        <div class="module-list" id="moduleList"></div>
+        <div class="module-detail" id="moduleDetail" aria-live="polite">点击任一模块卡，查看技能效果、具体用法、预算消耗和适配棋种。选择卡片后，再点红方对应棋子完成装配。</div>
+        <div class="section-gap">
+          <div class="panel-head">本次装配 <small id="buildCount">0 枚</small></div>
+          <div class="module-counts" id="moduleCounts"></div>
+        </div>
+        <div class="section-gap btn-row">
+          <button class="btn primary" id="startGame">确认构筑 · 进入残局</button>
+          <button class="btn" id="clearBuild">清空装配</button>
+        </div>
+        <div class="notice" id="buildNotice">帅/将自动配置；士不装配模块。</div>
+      </aside>
+
+      <main class="board-wrap">
+        <div class="board-topline"><span class="tag">红方 · 博士</span><span class="subtle">九路棋线 · 十个落子横排</span><span class="tag">黑方 · 特蕾西娅</span></div>
+        <div class="board-shell">
+          <div class="board" id="board" aria-label="双生棋棋盘"></div>
+          <div class="river-label">楚 河 · 汉 界</div>
+          <div class="board-overlay" id="boardOverlay"></div>
+          <div class="sacrifice-banner" id="sacrificeBanner">献祭刻痕：选择一枚非帅/将的己方棋子作为落点 <button class="btn small" id="cancelSacrifice">取消</button></div>
+        </div>
+        <div class="board-meta"><span>棋子移动遵循中国象棋基础走法</span><span>身份模块只赋予技能，不改变基础走法</span></div>
+      </main>
+
+      <aside class="panel right-column">
+        <h2 class="panel-head">本局规则</h2>
+        <div class="info-row"><span>构筑预算</span><span>双方各 12 点</span></div>
+        <div class="info-row"><span>模块限制</span><span>对应棋种装配；数量不超持有棋子</span></div>
+        <div class="info-row"><span>技能限制</span><span>单技能每局 1 次；每回合最多 1 个主动技能</span></div>
+        <div class="info-row"><span>回溯</span><span>己方回合开始、未被将军时可铭刻存档</span></div>
+        <div class="section-gap subtle">本局以标准开局开始。献祭是一次正常走棋：棋子永久退出，技能完整传承；回溯不会恢复已献祭棋子。</div>
+        <div class="section-gap"><span class="tag">当前版本：技能Ⅰ级</span> <span class="tag">经验字段已预留</span></div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="stage" id="battleStage">
+    <div class="layout">
+      <aside class="panel side-stack">
+        <section>
+          <h2 class="panel-head">行动与锚点</h2>
+          <div class="info-row"><span>当前行动</span><span id="turnLabel">红方</span></div>
+          <div class="info-row"><span>回合数</span><span id="roundLabel">1</span></div>
+          <div class="info-row"><span>技能额度</span><span id="skillTurnLabel">本回合未使用</span></div>
+          <div class="info-row"><span>红方回溯</span><span id="redRewindLabel">0</span></div>
+          <div class="info-row"><span>黑方回溯</span><span id="blackRewindLabel">0</span></div>
+          <div class="section-gap btn-row">
+            <button class="btn small" id="setSave">铭刻存档点</button>
+            <button class="btn small" id="sacrificeToggle">献祭刻痕</button>
+            <button class="btn small" id="cancelSkill">取消技能</button>
+          </div>
+          <div class="notice" id="battleNotice">红方先行。点击棋子查看行动与情报。</div>
+        </section>
+        <section>
+          <h2 class="panel-head">主动技能</h2>
+          <div class="quick-skills" id="quickSkills"></div>
+          <div class="subtle section-gap">先选棋子，再点技能；需要落子的技能最后选择合法落点。发动技能会结束本回合行动。</div>
+          <details class="skill-guide" open>
+            <summary>技能速查 · 效果与用法</summary>
+            <div class="skill-guide-list">
+              <div class="skill-guide-item"><strong>移宫换防 · 主动</strong><span>帅/将与九宫内己方士/仕交换位置；选帅/将、点技能，再点己方士/仕。用于脱离威胁或调整防守。</span></div>
+              <div class="skill-guide-item"><strong>炮火封锁 · 主动</strong><span>炮与敌子同线且中间恰有一枚棋子时可封锁；选炮、点技能、再点目标，封住其下一回合主动技能。将帅不能被锁。</span></div>
+              <div class="skill-guide-item"><strong>踏镫跃击 · 主动</strong><span>马走日时忽略马腿阻挡；选马、点技能、再选合法落点，可越过原本蹩住的马腿。</span></div>
+              <div class="skill-guide-item"><strong>透眼穿行 · 主动</strong><span>象走田时忽略象眼阻挡；选象、点技能、再选落点，仍不能过河。</span></div>
+              <div class="skill-guide-item"><strong>急行军 · 主动</strong><span>过河兵/卒前方两格都空时可向前走两格；选兵、点技能、再选两格外落点，不能吃子。</span></div>
+              <div class="skill-guide-item"><strong>长驱突进 · 主动</strong><span>依规则延长车的一次直线移动；但车本身已可沿无遮挡直线走到底，因此通常不会新增落点。选车、点技能后选择合法落点。</span></div>
+              <div class="skill-guide-item"><strong>辅弼护宫 · 被动</strong><span>士/仕自动抵消一次针对九宫内棋子的敌方主动技能；无需点击，本局一次。</span></div>
+              <div class="skill-guide-item"><strong>共同限制</strong><span>每项技能每局一次、每回合最多发动一项；技能不送额外走棋。每次使用都须保证己方将帅安全。</span></div>
+            </div>
+          </details>
+        </section>
+      </aside>
+
+      <main class="board-wrap">
+        <div class="board-topline"><span class="tag" id="redCount">红方 16</span><span class="subtle" id="battleTitle">残局推演 · 循环 01</span><span class="tag" id="blackCount">黑方 16</span></div>
+        <div class="board-shell">
+          <div class="board" id="battleBoard" aria-label="双生棋对局棋盘"></div>
+          <div class="river-label">楚 河 · 汉 界</div>
+          <div class="board-overlay" id="battleOverlay"></div>
+          <div class="sacrifice-banner" id="battleSacrificeBanner">献祭刻痕：目标必须为己方非将帅 <button class="btn small" id="battleCancelSacrifice">取消</button></div>
+        </div>
+        <div class="board-meta"><span>不允许普通悔棋</span><span id="checkLabel">将帅安全校验开启</span></div>
+      </main>
+
+      <aside class="panel right-column side-stack">
+        <section>
+          <h2 class="panel-head">棋子情报</h2>
+          <div id="pieceInfo" class="subtle">选择棋子以查看身份、技能等级与使用状态。</div>
+        </section>
+        <section>
+          <h2 class="panel-head">战术日志</h2>
+          <div class="log" id="actionLog" aria-live="polite"></div>
+        </section>
+      </aside>
+    </div>
+    <div class="outcome hidden" id="outcome"></div>
+  </section>
+
+  <footer class="footer">
+    <div class="settings">
+      <label>演出
+        <select id="animationSetting"><option value="1">1×</option><option value="0.5">0.5×</option><option value="2">2×</option><option value="0">跳过</option></select>
+      </label>
+      <label><input id="soundSetting" type="checkbox"> 极简音效</label>
+      <label>难度
+        <select id="difficulty"><option value="easy">初阶</option><option value="normal">标准</option><option value="hard" selected>强敌</option></select>
+      </label>
+    </div>
+    <div class="btn-row">
+      <button class="btn small" id="skipAnimation" hidden>跳过当前演出</button>
+      <button class="btn small" id="restart">重新开始</button>
+    </div>
+  </footer>
+</div>
+<div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal"><h2 id="modalTitle"></h2><p id="modalText"></p><div class="modal-actions" id="modalActions"></div></div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  // PRTS 干员头像直链；可按棋子 ID 替换。头像加载失败时自动显示扁平文字棋子。
+  const PORTRAITS = {
+    redKing:{name:"博士",url:"https://media.prts.wiki/a/aa/Npc_doctor.png"},
+    blackKing:{name:"特雷西娅",url:"https://media.prts.wiki/8/8f/Avg_avg_npc_056.png"},
+    redAdvisor:[{name:"凯尔希",url:"https://media.prts.wiki/c/c5/%E5%A4%B4%E5%83%8F_%E5%87%AF%E5%B0%94%E5%B8%8C.png"},{name:"阿米娅",url:"https://media.prts.wiki/3/36/%E5%A4%B4%E5%83%8F_%E9%98%BF%E7%B1%B3%E5%A8%85.png"}],
+    redRook:[{name:"推进之王",url:"https://media.prts.wiki/b/ba/%E5%A4%B4%E5%83%8F_%E6%8E%A8%E8%BF%9B%E4%B9%8B%E7%8E%8B.png"},{name:"星熊",url:"https://media.prts.wiki/0/07/%E5%A4%B4%E5%83%8F_%E6%98%9F%E7%86%8A.png"}],
+    redHorse:[{name:"陈",url:"https://media.prts.wiki/c/cf/%E5%A4%B4%E5%83%8F_%E9%99%88.png"},{name:"闪灵",url:"https://media.prts.wiki/5/54/%E5%A4%B4%E5%83%8F_%E9%97%AA%E7%81%B5.png"}],
+    redCannon:[{name:"薇（W）",url:"https://media.prts.wiki/d/d6/%E5%A4%B4%E5%83%8F_W.png"},{name:"伊芙利特",url:"https://media.prts.wiki/e/ed/%E5%A4%B4%E5%83%8F_%E4%BC%8A%E8%8A%99%E5%88%A9%E7%89%B9.png"}],
+    redElephant:[{name:"夜莺",url:"https://media.prts.wiki/6/64/%E5%A4%B4%E5%83%8F_%E5%A4%9C%E8%8E%BA.png"},{name:"华法琳",url:"https://media.prts.wiki/3/30/%E5%A4%B4%E5%83%8F_%E5%8D%8E%E6%B3%95%E7%90%B3.png"}],
+    redPawn:[
+      {name:"泡普卡",url:"https://media.prts.wiki/1/16/%E5%A4%B4%E5%83%8F_%E6%B3%A1%E6%99%AE%E5%8D%A1.png"},
+      {name:"杰西卡",url:"https://media.prts.wiki/6/63/%E5%A4%B4%E5%83%8F_%E6%9D%B0%E8%A5%BF%E5%8D%A1.png"},
+      {name:"克洛丝",url:"https://media.prts.wiki/b/b9/%E5%A4%B4%E5%83%8F_%E5%85%8B%E6%B4%9B%E4%B8%9D.png"},
+      {name:"斑点",url:"https://media.prts.wiki/3/30/%E5%A4%B4%E5%83%8F_%E6%96%91%E7%82%B9.png"},
+      {name:"玫兰莎",url:"https://media.prts.wiki/4/4b/%E5%A4%B4%E5%83%8F_%E7%8E%AB%E5%85%B0%E8%8E%8E.png"}
+    ],
+    blackAdvisor:[{name:"霜星",url:"https://media.prts.wiki/0/07/%E5%A4%B4%E5%83%8F_%E6%95%8C%E4%BA%BA_%E9%9C%9C%E6%98%9F.png"},{name:"浮士德",url:"https://media.prts.wiki/7/7c/%E5%A4%B4%E5%83%8F_%E6%95%8C%E4%BA%BA_%E6%B5%AE%E5%A3%AB%E5%BE%B7.png"}],
+    blackRook:[{name:"伊内丝",url:"https://media.prts.wiki/8/8c/%E5%A4%B4%E5%83%8F_%E4%BC%8A%E5%86%85%E4%B8%9D.png"},{name:"爱国者",url:"https://media.prts.wiki/0/04/%E5%A4%B4%E5%83%8F_%E6%95%8C%E4%BA%BA_%E7%88%B1%E5%9B%BD%E8%80%85.png"}],
+    blackHorse:[{name:"泥岩",url:"https://media.prts.wiki/0/06/%E5%A4%B4%E5%83%8F_%E6%B3%A5%E5%B2%A9.png"},{name:"弑君者",url:"https://media.prts.wiki/c/c4/%E5%A4%B4%E5%83%8F_%E6%95%8C%E4%BA%BA_%E5%BC%91%E5%90%9B%E8%80%85.png"}],
+    blackElephant:[{name:"梅菲斯特",url:"https://media.prts.wiki/2/2e/%E5%A4%B4%E5%83%8F_%E6%95%8C%E4%BA%BA_%E6%A2%85%E8%8F%B2%E6%96%AF%E7%89%B9.png"},{name:"碎骨",url:"https://media.prts.wiki/5/59/%E5%A4%B4%E5%83%8F_%E6%95%8C%E4%BA%BA_%E7%A2%8E%E9%AA%A8.png"}],
+    blackCannon:[{name:"塔露拉",url:"https://media.prts.wiki/1/10/%E5%A4%B4%E5%83%8F_%E6%95%8C%E4%BA%BA_%E5%A1%94%E9%9C%B2%E6%8B%89.png"},{name:"敌方凯尔希",url:"https://media.prts.wiki/2/28/%E5%A4%B4%E5%83%8F_%E6%95%8C%E4%BA%BA_%E5%87%AF%E5%B0%94%E5%B8%8C.png"}],
+    blackPawn:[
+      {name:"悖谬裂变学徒",url:"https://media.prts.wiki/a/aa/%E5%A4%B4%E5%83%8F_%E6%95%8C%E4%BA%BA_%E8%90%A8%E5%8D%A1%E5%85%B9%E6%82%96%E8%B0%AC%E8%A3%82%E5%8F%98%E5%AD%A6%E5%BE%92.png"},
+      {name:"悖谬裂变术师",url:"https://media.prts.wiki/e/ee/%E5%A4%B4%E5%83%8F_%E6%95%8C%E4%BA%BA_%E8%90%A8%E5%8D%A1%E5%85%B9%E6%82%96%E8%B0%AC%E8%A3%82%E5%8F%98%E6%9C%AF%E5%B8%88.png"},
+      {name:"悖谬谍报官",url:"https://media.prts.wiki/b/b5/%E5%A4%B4%E5%83%8F_%E6%95%8C%E4%BA%BA_%E8%90%A8%E5%8D%A1%E5%85%B9%E6%82%96%E8%B0%AC%E8%B0%8D%E6%8A%A5%E5%AE%98.png"},
+      {name:"子裔惩戒者",url:"https://media.prts.wiki/d/de/%E5%A4%B4%E5%83%8F_%E6%95%8C%E4%BA%BA_%E8%90%A8%E5%8D%A1%E5%85%B9%E5%AD%90%E8%A3%94%E6%83%A9%E6%88%92%E8%80%85.png"},
+      {name:"枯朽战士",url:"https://media.prts.wiki/9/96/%E5%A4%B4%E5%83%8F_%E6%95%8C%E4%BA%BA_%E8%90%A8%E5%8D%A1%E5%85%B9%E6%9E%AF%E6%9C%BD%E6%88%98%E5%A3%AB.png"}
+    ]
+  };
+  const TYPES = {
+    king:{cn:"帅/将",glyph:{red:"帅",black:"将"},value:10000},
+    advisor:{cn:"士/仕",glyph:{red:"仕",black:"士"},value:22},
+    elephant:{cn:"象/相",glyph:{red:"相",black:"象"},value:24},
+    rook:{cn:"车",glyph:{red:"车",black:"车"},value:90},
+    horse:{cn:"马",glyph:{red:"马",black:"马"},value:45},
+    cannon:{cn:"炮",glyph:{red:"炮",black:"炮"},value:48},
+    pawn:{cn:"兵/卒",glyph:{red:"兵",black:"卒"},value:12}
+  };
+  const MODULES = {
+    queen:{name:"炮模块",mark:"炮",cn:"炮火封锁",type:"cannon",cost:4,limit:2,desc:"炮与敌子同线且恰有一枚棋子作为炮架时，可封锁目标的主动技能至其下一回合结束。不能指定将帅。",use:"装在炮上。对局中选中该炮，点击“炮火封锁”，再点同线且恰有一枚炮架的敌方棋子。封锁不移动棋子，但会消耗本回合行动。"},
+    rook:{name:"车模块",mark:"车",cn:"长驱突进",type:"rook",cost:3,limit:2,desc:"按规则延长车的一次直线移动；车本身已可沿无遮挡直线走到底，因此通常不会新增落点。",use:"装在车上。对局中选中该车，点击“长驱突进”，再选合法落点。注意：标准象棋车本就能沿无遮挡直线走到底，此技能通常不会增加可达格，不会额外赠送行动。"},
+    knight:{name:"马模块",mark:"马",cn:"踏镫跃击",type:"horse",cost:2,limit:2,desc:"马走日时忽略一个被占据的马腿；落点仍须合法。",use:"装在马上。对局中选中该马，点击“踏镫跃击”，再选落点；适合马腿被堵时使用，仍不能落在己方棋子上。"},
+    bishop:{name:"象模块",mark:"象",cn:"透眼穿行",type:"elephant",cost:2,limit:2,desc:"象走田时忽略一个被占据的象眼；仍不能过河。",use:"装在象/相上。对局中选中该象，点击“透眼穿行”，再选落点；只忽略象眼，不能越河或吃己方棋子。"},
+    pawn:{name:"兵模块",mark:"兵",cn:"急行军",type:"pawn",cost:1,limit:5,desc:"过河后，前方连续两个位置均为空时向前移动两格；不能吃子或后退。",use:"装在兵/卒上。过河后选中该兵，点击“急行军”，再点前方两格的落点；仅限两格都空的直线前进。"}
+  };
+  const SKILL_TEXT = Object.assign({},Object.fromEntries(Object.values(MODULES).map(m=>[m.cn,m.desc])),{
+    "移宫换防":"帅/将与九宫内己方士/仕交换位置；交换后将帅须安全。每局一次。",
+    "辅弼护宫":"敌方主动技能指定己方九宫内棋子时可抵消。当前沙盘中用于抵消炮火封锁。每局一次。"
+  });
+  const SKILL_BY_MODULE = {queen:"炮火封锁",rook:"长驱突进",knight:"踏镫跃击",bishop:"透眼穿行",pawn:"急行军"};
+  const SKILL_TYPE = {"移宫换防":"king","长驱突进":"rook","踏镫跃击":"horse","透眼穿行":"elephant","炮火封锁":"cannon","急行军":"pawn"};
+  const moduleCost = id => MODULES[id].cost;
+  const deepCopy = value => JSON.parse(JSON.stringify(value));
+  const inBoard = (x,y) => x>=0 && x<9 && y>=0 && y<10;
+  const isPalace = (side,x,y) => x>=3 && x<=5 && (side==="red" ? y>=7 : y<=2);
+  const sideName = side => side==="red" ? "红方" : "黑方";
+  const coord = (x,y) => `${String.fromCharCode(65+x)}${10-y}`;
+  const visualY = y => y+(y>=5?1:0);
+  const buildAssignments = new Map();
+  let selectedModule = null, selectedModuleInfo = null, remainingBudget = 12, selectedPieceId = null, sacrificeMode = false, skillMode = null, selectedActions = [];
+  let game = null, busy = false, skipCurrent = false, timer = null, finishTimer = null, aiTimer = null, audioCtx = null;
+  let settings = {animation:1,sound:false,difficulty:"hard"};
+  const refs = {};
+  const get = id => document.getElementById(id);
+  ["statusStrip","moduleList","moduleDetail","budgetValue","buildCount","moduleCounts","buildNotice","board","battleBoard","boardOverlay","battleOverlay",
+   "buildStage","battleStage","startGame","clearBuild","turnLabel","roundLabel","skillTurnLabel","redRewindLabel","blackRewindLabel",
+   "setSave","sacrificeToggle","cancelSkill","battleNotice","quickSkills","pieceInfo","actionLog","checkLabel","redCount","blackCount",
+   "battleTitle","outcome","animationSetting","soundSetting","difficulty","restart","skipAnimation","modalBackdrop","modalTitle","modalText",
+   "modalActions","sacrificeBanner","cancelSacrifice","battleSacrificeBanner","battleCancelSacrifice"].forEach(id=>refs[id]=get(id));
+
+  function initialPieces() {
+    const pieces=[];
+    const add=(side,type,x,y,id,name,avatar)=>pieces.push({id,side,type,x,y,name,avatar,module:null,skills:[]});
+    ["rook","horse","elephant","advisor","king","advisor","elephant","horse","rook"].forEach((type,x)=>{
+      if(type==="king") add("black","king",x,0,"black-king",PORTRAITS.blackKing.name,PORTRAITS.blackKing.url);
+      else if(type==="advisor") {const op=PORTRAITS.blackAdvisor[x===3?0:1];add("black",type,x,0,`black-advisor-${x}`,op.name,op.url);}
+      else {
+        const key={rook:"blackRook",horse:"blackHorse",elephant:"blackElephant"}[type];
+        const index=type==="rook"?(x===0?0:1):type==="horse"?(x===1?0:1):(x===2?0:1);
+        const op=PORTRAITS[key][index];
+        add("black",type,x,0,`black-${type}-${x}`,op.name,op.url);
+      }
+    });
+    [1,7].forEach((x,i)=>{const op=PORTRAITS.blackCannon[i];add("black","cannon",x,2,`black-cannon-${i}`,op.name,op.url);});
+    [0,2,4,6,8].forEach((x,i)=>{const op=PORTRAITS.blackPawn[i];add("black","pawn",x,3,`black-pawn-${i}`,op.name,op.url);});
+    ["rook","horse","elephant","advisor","king","advisor","elephant","horse","rook"].forEach((type,x)=>{
+      if(type==="king") add("red","king",x,9,"red-king",PORTRAITS.redKing.name,PORTRAITS.redKing.url);
+      else if(type==="advisor") {const op=PORTRAITS.redAdvisor[x===3?0:1];add("red",type,x,9,`red-advisor-${x}`,op.name,op.url);}
+      else {
+        const key={rook:"redRook",horse:"redHorse",elephant:"redElephant"}[type];
+        const index=x<4?0:1;
+        const operator=PORTRAITS[key][index];
+        add("red",type,x,9,`red-${type}-${x}`,operator.name,operator.url);
+      }
+    });
+    [1,7].forEach((x,i)=>{const op=PORTRAITS.redCannon[i];add("red","cannon",x,7,`red-cannon-${i}`,op.name,op.url);});
+    [0,2,4,6,8].forEach((x,i)=>{const op=PORTRAITS.redPawn[i];add("red","pawn",x,6,`red-pawn-${i}`,op.name,op.url);});
+    return pieces;
+  }
+  const builderPieces=initialPieces();
+  const getBuilderUnit=id=>builderPieces.find(p=>p.id===id);
+  const getPiece=(id,state=game)=>state&&state.board.find(p=>p.id===id);
+  const unitAt=(x,y,state=game)=>state&&state.board.find(p=>p.x===x&&p.y===y);
+
+  function createSkill(name,availableFromPly=0) {
+    return {name,level:1,exp:0,used:false,cooldown:0,availableFromPly};
+  }
+  function setupSkills(pieces,assignments) {
+    pieces.forEach(p=>{
+      if(p.type==="king") p.skills=[createSkill("移宫换防")];
+      if(p.type==="advisor") p.skills=[createSkill("辅弼护宫")];
+      const module=assignments.get(p.id);
+      if(module){p.module=module;p.skills.push(createSkill(SKILL_BY_MODULE[module]));}
+    });
+  }
+  function buildBlackModules(pieces) {
+    const by=(type)=>pieces.filter(p=>p.side==="black"&&p.type===type);
+    const result=new Map();
+    by("cannon").forEach(p=>result.set(p.id,"queen"));
+    by("horse").forEach(p=>result.set(p.id,"knight"));
+    return result;
+  }
+  function createGame() {
+    const board=initialPieces();
+    const allAssignments=new Map(buildAssignments);
+    const blackModules=buildBlackModules(board);
+    blackModules.forEach((v,k)=>allAssignments.set(k,v));
+    setupSkills(board,allAssignments);
+    const diff=settings.difficulty;
+    game={
+      board,side:"red",round:1,ply:0,skillUsedTurn:{red:false,black:false},locks:{},
+      rewinds:{red:diff==="easy"?2:1,black:diff==="easy"?0:1},
+      saves:{red:null,black:null},permanentLoss:[],permanentSkills:{},
+      log:[],history:[],result:null,selected:null,turnStarted:true
+    };
+    selectedPieceId=null;sacrificeMode=false;skillMode=null;selectedActions=[];busy=false;
+    refs.outcome.classList.add("hidden");
+    logEvent("沙盘启动。博士与特蕾西娅进入标准阵位。");
+    renderBattle();
+    refs.buildStage.classList.remove("active");refs.battleStage.classList.add("active");
+    startTurn();
+  }
+
+  function renderSquares(boardElement,stage) {
+    boardElement.innerHTML="";
+    const cells=[];
+    for(let x=0;x<9;x++){
+      const riverCell=document.createElement("div");riverCell.className="river-cell";riverCell.style.gridColumn=String(x+1);boardElement.appendChild(riverCell);
+    }
+    for(let y=0;y<10;y++) for(let x=0;x<9;x++){
+      const cell=document.createElement("button");
+      cell.type="button";cell.className="cell";cell.dataset.x=x;cell.dataset.y=y;cell.setAttribute("aria-label",`${coord(x,y)}格`);
+      cell.style.gridColumn=String(x+1);cell.style.gridRow=String(y+(y>=5?2:1));
+      cell.addEventListener("click",()=>onCellClick(x,y,stage));
+      boardElement.appendChild(cell);cells.push(cell);
+    }
+    return cells;
+  }
+  let buildCells=[],battleCells=[];
+  function makePieceNode(p,stage) {
+    const node=document.createElement("button");
+    node.type="button";node.className=`piece ${p.side}`;node.dataset.id=p.id;
+    node.setAttribute("aria-label",`${sideName(p.side)}${p.name}${TYPES[p.type].cn}`);
+    node.addEventListener("click",event=>{event.stopPropagation();onPieceClick(p.id,stage);});
+    if(p.avatar){
+      const img=document.createElement("img");img.className="portrait";img.alt="";img.src=p.avatar;
+      img.onerror=()=>{img.remove();};node.appendChild(img);
+    }
+    const label=document.createElement("span");label.className="piece-label";label.textContent=TYPES[p.type].glyph[p.side];node.appendChild(label);
+    return node;
+  }
+  function renderPieces(boardElement,pieces,stage,actions=[]) {
+    let nodes=Array.from(boardElement.querySelectorAll(".piece"));
+    const nodeMap=new Map(nodes.map(n=>[n.dataset.id,n]));
+    const liveIds=new Set(pieces.map(p=>p.id));
+    nodes.forEach(n=>{if(!liveIds.has(n.dataset.id))n.remove();});
+    pieces.forEach(p=>{
+      let node=nodeMap.get(p.id);
+      if(!node){node=makePieceNode(p,stage);boardElement.appendChild(node);}
+      node.style.setProperty("--x",p.x);node.style.setProperty("--y",p.y);node.style.setProperty("--grid-y",p.y+(p.y>=5?1:0));
+      node.className=`piece ${p.side}${p.id===selectedPieceId?" selected":""}${p.side==="red"&&game&&isInCheck(game,"red")&&p.type==="king"?" check":""}${p.side==="black"&&game&&isInCheck(game,"black")&&p.type==="king"?" check":""}${p.module?" module-equipped":""}`;
+      node.dataset.moduleMark=p.module?MODULES[p.module].mark:"";
+      node.disabled=busy||!!game?.result&&stage==="battle";
+    });
+    const cellMap=new Map(Array.from(boardElement.querySelectorAll(".cell")).map(c=>[`${c.dataset.x},${c.dataset.y}`,c]));
+    boardElement.querySelectorAll(".cell").forEach(c=>c.classList.remove("hint","capture-hint","selected-cell"));
+    if(stage==="battle"&&selectedPieceId){
+      const selected=getPiece(selectedPieceId);
+      if(selected) cellMap.get(`${selected.x},${selected.y}`)?.classList.add("selected-cell");
+      actions.forEach(a=>{
+        if(a.kind==="move"){
+          const c=cellMap.get(`${a.to.x},${a.to.y}`);
+          const target=unitAt(a.to.x,a.to.y);
+          if(c)c.classList.add(target?(target.side===game.side?"capture-hint":"capture-hint"):"hint");
+        }else if(a.kind==="swap"){
+          const advisor=game.board.find(p=>p.id===a.advisorId);
+          if(advisor)cellMap.get(`${advisor.x},${advisor.y}`)?.classList.add("capture-hint");
+        }
+      });
+    }
+  }
+  function renderBuilder() {
+    if(!buildCells.length)buildCells=renderSquares(refs.board,"build");
+    renderPieces(refs.board,builderPieces,"build");
+    refs.budgetValue.textContent=remainingBudget;
+    refs.buildCount.textContent=`${buildAssignments.size} 枚`;
+    refs.moduleList.innerHTML="";
+    Object.entries(MODULES).forEach(([id,m])=>{
+      const equipped=[...buildAssignments.values()].filter(v=>v===id).length;
+      const disabled=remainingBudget<m.cost||equipped>=Math.min(m.limit,builderPieces.filter(p=>p.side==="red"&&p.type===m.type).length);
+      const button=document.createElement("button");
+      button.className=`module-card${selectedModule===id?" active":""}${selectedModuleInfo===id?" info-active":""}${disabled?" disabled":""}`;
+      button.draggable=!disabled;button.innerHTML=`<span class="module-main"><span class="module-icon">${m.mark}</span><span><span class="module-name">${m.name}</span><span class="module-meta">${m.cn} · ${m.limit} 枚上限</span></span></span><span class="cost">${m.cost} 点</span>`;
+      button.addEventListener("click",()=>{
+        selectedModuleInfo=id;
+        selectedModule=disabled?null:(selectedModule===id?null:id);
+        renderBuilder();
+      });
+      button.addEventListener("dragstart",e=>{selectedModule=id;e.dataTransfer.setData("text/module",id);});
+      refs.moduleList.appendChild(button);
+    });
+    const detailModule=selectedModuleInfo&&MODULES[selectedModuleInfo];
+    if(detailModule){
+      const equipped=[...buildAssignments.values()].filter(v=>v===selectedModuleInfo).length;
+      const max=Math.min(detailModule.limit,builderPieces.filter(p=>p.side==="red"&&p.type===detailModule.type).length);
+      const unavailable=remainingBudget<detailModule.cost||equipped>=max;
+      const typeName={cannon:"炮",rook:"车",horse:"马",elephant:"象",pawn:"兵/卒"}[detailModule.type];
+      refs.moduleDetail.innerHTML=`<div class="module-detail-title">${escapeHtml(detailModule.name)} · ${escapeHtml(detailModule.cn)}</div><p><strong>效果：</strong>${escapeHtml(detailModule.desc)}</p><p><strong>装配：</strong>点击本卡后，点棋盘上的红方${typeName}；也可拖到对应棋子。安装消耗 ${detailModule.cost} 点，当前 ${equipped}/${max} 枚。</p><p><strong>发动：</strong>${escapeHtml(detailModule.use)}</p>${unavailable?'<p class="module-unavailable">当前预算不足或已达装配上限；仍可查看说明，但暂时不能装配。</p>':""}`;
+    }else{
+      refs.moduleDetail.textContent="点击任一模块卡，查看技能效果、具体用法、预算消耗和适配棋种。选择卡片后，再点红方对应棋子完成装配。";
+    }
+    refs.moduleCounts.innerHTML="";
+    Object.entries(MODULES).forEach(([id,m])=>{
+      const n=[...buildAssignments.values()].filter(v=>v===id).length;
+      const el=document.createElement("div");el.className="module-count";el.textContent=`${m.name} × ${n}`;refs.moduleCounts.appendChild(el);
+    });
+    buildCells.forEach(c=>{
+      c.ondragover=e=>{if(selectedModule)e.preventDefault();};
+      c.ondrop=e=>{e.preventDefault();const p=builderPieces.find(u=>u.x===+c.dataset.x&&u.y===+c.dataset.y);if(p)assignModule(p.id,e.dataTransfer.getData("text/module")||selectedModule);};
+    });
+  }
+  function renderBattle() {
+    if(!game)return;
+    if(!battleCells.length)battleCells=renderSquares(refs.battleBoard,"battle");
+    renderPieces(refs.battleBoard,game.board,"battle",selectedActions);
+    refs.turnLabel.textContent=sideName(game.side)+(game.side==="red"?" · 博士":" · 特蕾西娅");
+    refs.roundLabel.textContent=game.round;
+    refs.skillTurnLabel.textContent=game.skillUsedTurn[game.side]?"已使用主动技能":"本回合未使用";
+    refs.redRewindLabel.textContent=`${game.rewinds.red} 次${game.saves.red?" · 已铭刻":" · 未铭刻"}`;
+    refs.blackRewindLabel.textContent=`${game.rewinds.black} 次${game.saves.black?" · 已铭刻":" · 未铭刻"}`;
+    refs.redCount.textContent=`红方 ${game.board.filter(p=>p.side==="red").length}`;
+    refs.blackCount.textContent=`黑方 ${game.board.filter(p=>p.side==="black").length}`;
+    refs.battleTitle.textContent=`残局推演 · 循环 ${String(game.round).padStart(2,"0")}`;
+    refs.checkLabel.textContent=isInCheck(game,game.side)?`${sideName(game.side)}将军`:"将帅安全校验开启";
+    refs.setSave.disabled=game.side!=="red"||!!game.saves.red||isInCheck(game,"red")||busy||!!game.result;
+    refs.sacrificeToggle.disabled=game.side!=="red"||busy||!!game.result;
+    refs.sacrificeToggle.classList.toggle("primary",sacrificeMode);
+    refs.cancelSkill.disabled=!skillMode||busy;
+    refs.battleSacrificeBanner.classList.toggle("show",sacrificeMode);
+    refs.actionLog.innerHTML=game.log.map(line=>`<div class="log-line"><time>${line.time}</time><span class="${line.side==="red"?"log-red":""}">${escapeHtml(line.text)}</span></div>`).join("");
+    refs.actionLog.scrollTop=refs.actionLog.scrollHeight;
+    renderSkillBar();
+    renderInfo(selectedPieceId?getPiece(selectedPieceId):null);
+    updateStatus();
+  }
+  function escapeHtml(text){return String(text).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+  function updateStatus(){
+    if(!game){refs.statusStrip.innerHTML=`<span class="status-chip">构筑<strong>12 点</strong></span>`;return;}
+    refs.statusStrip.innerHTML=`<span class="status-chip ${game.side==="red"?"active":""}">行动方<strong>${sideName(game.side)}</strong></span><span class="status-chip">回合<strong>${game.round}</strong></span><span class="status-chip">红方回溯<strong>${game.rewinds.red}</strong></span><span class="status-chip">黑方回溯<strong>${game.rewinds.black}</strong></span><span class="status-chip">技能额度<strong>${game.skillUsedTurn[game.side]?"已用":"可用"}</strong></span>`;
+  }
+  function assignModule(pieceId,moduleId=selectedModule) {
+    const p=getBuilderUnit(pieceId);
+    if(!p||!moduleId||p.side!=="red")return;
+    const spec=MODULES[moduleId];
+    if(!spec||p.type!==spec.type){refs.buildNotice.textContent="模块只能安装在对应棋种上。";return;}
+    const existing=buildAssignments.get(pieceId);
+    const usedCount=[...buildAssignments.values()].filter(v=>v===moduleId).length;
+    const max=Math.min(spec.limit,builderPieces.filter(u=>u.side==="red"&&u.type===spec.type).length);
+    if(existing===moduleId){selectedModule=null;return;}
+    if(existing){refs.buildNotice.textContent="请先移除该棋子的现有模块。";return;}
+    if(usedCount>=max){refs.buildNotice.textContent=`${spec.name} 已达到本局数量上限。`;return;}
+    if(remainingBudget<spec.cost){refs.buildNotice.textContent="意识容量不足，无法装配。";return;}
+    buildAssignments.set(pieceId,moduleId);remainingBudget-=spec.cost;selectedModule=null;
+    refs.buildNotice.textContent=`${p.name} 已装配 ${spec.name} · ${spec.cost} 点已扣除。`;
+    refs.budgetValue.classList.remove("bump");void refs.budgetValue.offsetWidth;refs.budgetValue.classList.add("bump");
+    renderBuilder();playClick();
+  }
+  function removeBuildModule(pieceId) {
+    const old=buildAssignments.get(pieceId);
+    if(!old)return;
+    remainingBudget+=MODULES[old].cost;buildAssignments.delete(pieceId);
+    refs.buildNotice.textContent=`已卸下 ${MODULES[old].name}，返还 ${MODULES[old].cost} 点。`;
+    renderBuilder();playClick();
+  }
+  function onPieceClick(id,stage) {
+    if(stage==="build"){
+      const p=getBuilderUnit(id);
+      if(selectedModule){assignModule(id);return;}
+      if(buildAssignments.has(id)){removeBuildModule(id);return;}
+      refs.buildNotice.textContent=p.side==="red"?"选择左侧模块后点选对应棋子。":"黑方构筑由沙盘自动完成。";
+      return;
+    }
+    if(!game||busy||game.result)return;
+    const p=getPiece(id);
+    if(!p)return;
+    playClick();
+    if(game.side!=="red"){
+      renderInfo(p);
+      return;
+    }
+    if(skillMode==="炮火封锁"){
+      if(p.side==="black"){castCannonLock(p);return;}
+      refs.battleNotice.textContent="炮火封锁只能指定敌方棋子。";return;
+    }
+    if(skillMode==="移宫换防"){
+      const swap=selectedActions.find(a=>a.kind==="swap"&&a.advisorId===id);
+      if(swap){executeAction(swap);return;}
+      refs.battleNotice.textContent="移宫换防只能选择九宫内己方士/仕。";return;
+    }
+    if(sacrificeMode&&selectedPieceId){
+      const target=getPiece(selectedPieceId);
+      if(target&&p.side==="red"&&p.id!==target.id){trySelectDestination(target,p.x,p.y);return;}
+    }
+    if(p.side==="red"){
+      selectedPieceId=id;
+      selectedActions=getLegalActions(game,id,{sacrifice:sacrificeMode,skillName:skillMode});
+      renderBattle();
+      if(!selectedActions.length)refs.battleNotice.textContent="该棋子当前没有符合将帅安全规则的落点。";
+      else refs.battleNotice.textContent=`${p.name} 已选中；选择淡点落子，描边落点表示吃子或献祭。`;
+    }else if(selectedPieceId){
+      trySelectDestination(getPiece(selectedPieceId),p.x,p.y);
+    }else{
+      renderInfo(p);
+    }
+  }
+  function onCellClick(x,y,stage){
+    if(stage==="build")return;
+    if(!game||busy||game.result||game.side!=="red")return;
+    if(skillMode==="炮火封锁"){
+      const target=unitAt(x,y);
+      if(target)castCannonLock(target);
+      else refs.battleNotice.textContent="锁定目标必须是同線敌方棋子。";
+      return;
+    }
+    if(selectedPieceId)trySelectDestination(getPiece(selectedPieceId),x,y);
+  }
+  function trySelectDestination(unit,x,y){
+    if(!unit)return;
+    const target=unitAt(x,y);
+    const action=selectedActions.find(a=>a.kind==="move"&&a.to.x===x&&a.to.y===y&&((a.captureId||null)===(target?.id||null)));
+    if(action){playClick();executeAction(action);return;}
+    if(target&&target.side==="red"&&sacrificeMode&&target.type!=="king"){
+      refs.battleNotice.textContent="该献祭走法不合法或会使帅位受将；棋局未改变。";
+      return;
+    }
+    refs.battleNotice.textContent="不是合法落点，或此行动会使己方将帅暴露。";
+  }
+  function renderSkillBar() {
+    refs.quickSkills.innerHTML="";
+    if(!game)return;
+    const unit=selectedPieceId?getPiece(selectedPieceId):null;
+    if(!unit||unit.side!=="red"){refs.quickSkills.innerHTML='<span class="subtle">先选择一枚红方棋子</span>';return;}
+    unit.skills.forEach(skill=>{
+      const ready=skillReady(unit,skill,game)&&!game.skillUsedTurn.red&&skill.name!=="辅弼护宫"&&skillApplies(unit,skill.name);
+      const button=document.createElement("button");
+      button.className=`skill-btn${ready?" ready":""}${skillMode===skill.name?" active":""}`;
+      button.disabled=!ready||busy||!!game.result;
+      button.textContent=`${skill.name} · ${skill.used?"已用":"可用"} · Ⅰ`;
+      button.title=SKILL_TEXT[skill.name]||"继承技能";
+      button.addEventListener("click",()=>activateSkill(skill.name));
+      refs.quickSkills.appendChild(button);
+    });
+    if(!unit.skills.length)refs.quickSkills.innerHTML='<span class="subtle">无主动技能</span>';
+  }
+  function renderInfo(p) {
+    if(!p){refs.pieceInfo.textContent="选择棋子以查看身份、技能等级与使用状态。";return;}
+    const module=p.module?MODULES[p.module].name:"无模块";
+    let html=`<div class="info-name">${escapeHtml(p.name)}</div><div class="info-row"><span>象棋身份</span><span>${TYPES[p.type].cn}</span></div><div class="info-row"><span>身份模块</span><span>${module}</span></div><div class="info-row"><span>阵营</span><span>${sideName(p.side)}</span></div>`;
+    p.skills.forEach(s=>html+=`<div class="skill-card"><div class="skill-title"><span>${escapeHtml(s.name)}</span><span>等级 Ⅰ</span></div><div class="skill-desc">${escapeHtml(SKILL_TEXT[s.name]||"继承的战术技艺。")}</div><div class="skill-desc">剩余次数：${s.used?"0":"1"} · 经验：${s.exp}/5 · 冷却：${s.cooldown}</div>${s.availableFromPly>game.ply?'<div class="skill-desc">传承技能将在后续回合启用</div>':""}</div>`);
+    refs.pieceInfo.innerHTML=html;
+  }
+
+  // 生成遵循中国象棋路径、蹩腿/塞眼与河界限制的基础行动。
+  function pseudoMoves(state,p,opts={}) {
+    const result=[],sacrifice=!!opts.sacrifice,skill=opts.skillName||null;
+    const push=(x,y,extra={})=>{
+      if(!inBoard(x,y))return false;
+      const occ=unitAt(x,y,state);
+      if(occ&&occ.side===p.side&&!sacrifice)return false;
+      if(occ&&occ.side===p.side&&(!sacrifice||occ.type==="king"))return false;
+      if(occ&&occ.type==="king")return false;
+      result.push({kind:"move",pieceId:p.id,to:{x,y},captureId:occ?occ.id:null,skillName:skill||null,...extra});
+      return !occ;
+    };
+    const ray=(dirs,max=9,screenMode=false)=>{
+      dirs.forEach(([dx,dy])=>{
+        let screen=0;
+        for(let step=1;step<=max;step++){
+          const x=p.x+dx*step,y=p.y+dy*step;if(!inBoard(x,y))break;
+          const occ=unitAt(x,y,state);
+          if(!screenMode){
+            if(!occ)push(x,y);
+            else{push(x,y);break;}
+          }else if(screen===0){
+            if(!occ)push(x,y);
+            else screen=1;
+          }else{
+            if(occ){if(occ.side!==p.side&&occ.type!=="king")push(x,y);else if(sacrifice&&occ.side===p.side&&occ.type!=="king")push(x,y);break;}
+          }
+        }
+      });
+    };
+    if(p.type==="rook")ray([[1,0],[-1,0],[0,1],[0,-1]]);
+    if(p.type==="cannon"){
+      const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+      dirs.forEach(([dx,dy])=>{
+        let screen=false;
+        for(let step=1;step<=9;step++){
+          const x=p.x+dx*step,y=p.y+dy*step;if(!inBoard(x,y))break;
+          const occ=unitAt(x,y,state);
+          if(!screen){if(!occ)push(x,y);else screen=true;}
+          else if(occ){if(occ.type!=="king"&&((occ.side!==p.side)||sacrifice))push(x,y);break;}
+        }
+      });
+      return result;
+    }
+    if(p.type==="horse"){
+      const steps=[[1,2,0,1],[-1,2,0,1],[1,-2,0,-1],[-1,-2,0,-1],[2,1,1,0],[-2,1,-1,0],[2,-1,1,0],[-2,-1,-1,0]];
+      steps.forEach(([dx,dy,lx,ly])=>{
+        const leg=unitAt(p.x+lx,p.y+ly,state);
+        if(leg&&skill!=="踏镫跃击")return;
+        push(p.x+dx,p.y+dy);
+      });return result;
+    }
+    if(p.type==="elephant"){
+      [[2,2],[2,-2],[-2,2],[-2,-2]].forEach(([dx,dy])=>{
+        const x=p.x+dx,y=p.y+dy;
+        if(p.side==="red"?y<5:y>4)return;
+        const eye=unitAt(p.x+dx/2,p.y+dy/2,state);
+        if(eye&&skill!=="透眼穿行")return;
+        push(x,y);
+      });return result;
+    }
+    if(p.type==="advisor"){
+      [[1,1],[1,-1],[-1,1],[-1,-1]].forEach(([dx,dy])=>{
+        const x=p.x+dx,y=p.y+dy;if(isPalace(p.side,x,y))push(x,y);
+      });return result;
+    }
+    if(p.type==="king"){
+      [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx,dy])=>{
+        const x=p.x+dx,y=p.y+dy;if(isPalace(p.side,x,y))push(x,y);
+      });return result;
+    }
+    if(p.type==="pawn"){
+      const forward=p.side==="red"?-1:1;
+      const crossed=p.side==="red"?p.y<=4:p.y>=5;
+      if(skill==="急行军"){
+        const oneY=p.y+forward,twoY=p.y+2*forward;
+        if(crossed&&inBoard(p.x,twoY)&&!unitAt(p.x,oneY,state)&&!unitAt(p.x,twoY,state))push(p.x,twoY);
+        return result;
+      }
+      if(!unitAt(p.x,p.y+forward,state))push(p.x,p.y+forward);
+      if(crossed){push(p.x-1,p.y);push(p.x+1,p.y);}
+      return result;
+    }
+    return result;
+  }
+  function isAttacked(state,x,y,bySide) {
+    for(const p of state.board){
+      if(p.side!==bySide)continue;
+      const dx=x-p.x,dy=y-p.y,adx=Math.abs(dx),ady=Math.abs(dy);
+      if(p.type==="rook"&&(dx===0||dy===0)&&countBetween(state,p.x,p.y,x,y)===0)return true;
+      if(p.type==="cannon"&&(dx===0||dy===0)&&countBetween(state,p.x,p.y,x,y)===1)return true;
+      if(p.type==="horse"&&((adx===1&&ady===2)||(adx===2&&ady===1))){
+        const leg=adx===1?unitAt(p.x,p.y+Math.sign(dy),state):unitAt(p.x+Math.sign(dx),p.y,state);
+        if(!leg)return true;
+      }
+      if(p.type==="elephant"&&adx===2&&ady===2&&(p.side==="red"?y>=5:y<=4)&&!unitAt(p.x+dx/2,p.y+dy/2,state))return true;
+      if(p.type==="advisor"&&adx===1&&ady===1&&isPalace(p.side,x,y))return true;
+      if(p.type==="king"){
+        if(adx+ady===1&&isPalace(p.side,x,y))return true;
+        if(dx===0&&countBetween(state,p.x,p.y,x,y)===0)return true;
+      }
+      if(p.type==="pawn"){
+        const forward=p.side==="red"?-1:1;
+        if(dx===0&&dy===forward)return true;
+        const crossed=p.side==="red"?p.y<=4:p.y>=5;
+        if(crossed&&ady===0&&adx===1)return true;
+      }
+    }
+    return false;
+  }
+  function countBetween(state,x1,y1,x2,y2){
+    if(x1!==x2&&y1!==y2)return Infinity;
+    const dx=Math.sign(x2-x1),dy=Math.sign(y2-y1);let x=x1+dx,y=y1+dy,count=0;
+    while(x!==x2||y!==y2){if(unitAt(x,y,state))count++;x+=dx;y+=dy;}
+    return count;
+  }
+  function isInCheck(state,side){
+    const king=state.board.find(p=>p.side===side&&p.type==="king");
+    if(!king)return true;
+    return isAttacked(state,king.x,king.y,side==="red"?"black":"red");
+  }
+  function cloneForCheck(state){
+    return {board:state.board.map(p=>({...p,skills:p.skills.map(s=>({...s}))})),side:state.side,round:state.round,ply:state.ply,skillUsedTurn:{...state.skillUsedTurn},locks:{...state.locks},permanentLoss:state.permanentLoss.slice(),permanentSkills:state.permanentSkills};
+  }
+  function skillReady(p,s,state) {
+    return !!s&&!s.used&&s.cooldown===0&&state.ply>=s.availableFromPly&&!(state.locks[p.id]&&state.ply<state.locks[p.id]);
+  }
+  function skillApplies(p,name) {
+    return !SKILL_TYPE[name]||p.type===SKILL_TYPE[name];
+  }
+  function canLockFrom(state,p,target) {
+    if(!target||target.side===p.side||target.type==="king"||(p.x!==target.x&&p.y!==target.y))return false;
+    return countBetween(state,p.x,p.y,target.x,target.y)===1;
+  }
+  function legalize(state,actions,side) {
+    return actions.filter(a=>{
+      const s=cloneForCheck(state);
+      if(a.kind==="move"){
+        const p=s.board.find(u=>u.id===a.pieceId);if(!p)return false;
+        if(a.captureId)s.board=s.board.filter(u=>u.id!==a.captureId);
+        p.x=a.to.x;p.y=a.to.y;
+        if(a.skillName){const sk=p.skills.find(k=>k.name===a.skillName);if(!sk||!skillReady(p,sk,state))return false;sk.used=true;s.skillUsedTurn[side]=true;}
+      }else if(a.kind==="swap"){
+        const k=s.board.find(u=>u.id===a.kingId),ad=s.board.find(u=>u.id===a.advisorId);
+        if(!k||!ad)return false;[k.x,ad.x]=[ad.x,k.x];[k.y,ad.y]=[ad.y,k.y];
+        const sk=k.skills.find(t=>t.name==="移宫换防");if(!skillReady(k,sk,state))return false;sk.used=true;s.skillUsedTurn[side]=true;
+      }else if(a.kind==="lock"){
+        const p=s.board.find(u=>u.id===a.pieceId),target=s.board.find(u=>u.id===a.targetId);
+        if(!p||!target||!canLockFrom(state,p,target))return false;
+        const sk=p.skills.find(t=>t.name==="炮火封锁");if(!skillReady(p,sk,state))return false;sk.used=true;s.skillUsedTurn[side]=true;
+      }
+      return !isInCheck(s,side);
+    });
+  }
+  function getLegalActions(state,pieceId,opts={}) {
+    const p=state.board.find(u=>u.id===pieceId);
+    if(!p)return [];
+    if(opts.sacrifice&&p.type==="king")return [];
+    const actions=[];
+    if(opts.skillName==="炮火封锁"){
+      if(!state.skillUsedTurn[p.side]&&skillReady(p,p.skills.find(s=>s.name==="炮火封锁"),state)){
+        state.board.filter(t=>canLockFrom(state,p,t)).forEach(t=>actions.push({kind:"lock",pieceId:p.id,targetId:t.id,skillName:"炮火封锁"}));
+      }
+      return legalize(state,actions,p.side);
+    }
+    if(opts.skillName==="移宫换防"){
+      const sk=p.skills.find(s=>s.name==="移宫换防");
+      if(p.type==="king"&&!state.skillUsedTurn[p.side]&&skillReady(p,sk,state)){
+        state.board.filter(a=>a.type==="advisor"&&a.side===p.side&&isPalace(p.side,a.x,a.y)).forEach(a=>actions.push({kind:"swap",kingId:p.id,advisorId:a.id,skillName:"移宫换防"}));
+      }
+      return legalize(state,actions,p.side);
+    }
+    if(opts.skillName){
+      const sk=p.skills.find(s=>s.name===opts.skillName);
+      if(!sk||!skillApplies(p,opts.skillName)||state.skillUsedTurn[p.side]||!skillReady(p,sk,state))return [];
+      if(opts.sacrifice)return [];
+      let special=pseudoMoves(state,p,{skillName:opts.skillName});
+      if(opts.skillName==="长驱突进"){
+        special=special.filter(a=>{
+          const dx=Math.sign(a.to.x-p.x),dy=Math.sign(a.to.y-p.y);
+          const distance=Math.abs(a.to.x-p.x)+Math.abs(a.to.y-p.y);
+          return distance>=2&&!a.captureId&&inBoard(a.to.x-dx,a.to.y-dy)&&!unitAt(a.to.x,a.to.y,state);
+        });
+      }
+      special.forEach(a=>actions.push(a));
+      return legalize(state,actions,p.side);
+    }
+    pseudoMoves(state,p,{sacrifice:!!opts.sacrifice}).forEach(a=>actions.push(a));
+    return legalize(state,actions,p.side);
+  }
+  function allLegalActions(state,side) {
+    const actions=[];
+    state.board.filter(p=>p.side===side).forEach(p=>{
+      actions.push(...getLegalActions(state,p.id));
+      if(!state.skillUsedTurn[side]){
+        p.skills.forEach(s=>{
+          if(s.name==="辅弼护宫"||s.name==="炮火封锁"||!skillReady(p,s,state))return;
+          actions.push(...getLegalActions(state,p.id,{skillName:s.name}));
+        });
+        if(p.type==="king"&&skillReady(p,p.skills.find(s=>s.name==="移宫换防"),state)&&!state.skillUsedTurn[side])
+          actions.push(...getLegalActions(state,p.id,{skillName:"移宫换防"}));
+      }
+    });
+    if(!state.skillUsedTurn[side]){
+      state.board.filter(p=>p.side===side&&p.type==="cannon").forEach(p=>{
+        if(skillReady(p,p.skills.find(s=>s.name==="炮火封锁"),state))
+          actions.push(...getLegalActions(state,p.id,{skillName:"炮火封锁"}));
+      });
+    }
+    return actions;
+  }
+  function activateSkill(name){
+    if(!game||busy||game.side!=="red"||game.skillUsedTurn.red)return;
+    const p=getPiece(selectedPieceId);if(!p)return;
+    const skill=p.skills.find(s=>s.name===name);
+    if(!skill||!skillApplies(p,name)||!skillReady(p,skill,game)){refs.battleNotice.textContent="技能已使用、被封锁、棋种不符，或尚未到可用回合。";return;}
+    skillMode=skillMode===name?null:name;sacrificeMode=false;
+    if(name==="炮火封锁"){
+      selectedActions=getLegalActions(game,p.id,{skillName:name});
+      refs.battleNotice.textContent="选择同線、且炮架恰好一个的敌方棋子；释放后炮不移动。";
+    }else{
+      selectedActions=getLegalActions(game,p.id,{skillName:name});
+      refs.battleNotice.textContent=name==="移宫换防"?"选择帅位与宫内己方士交换；交换后帅位必须安全。":`以「${name}」选择合法落点。`;
+    }
+    renderBattle();
+    if(!selectedActions.length&&name!=="炮火封锁")refs.battleNotice.textContent="当前没有满足技能条件且能保证将帅安全的落点。";
+    playClick();
+  }
+  function findReadyAdvisor(side,state) {
+    return state.board.find(p=>p.side===side&&skillReady(p,p.skills.find(s=>s.name==="辅弼护宫"),state));
+  }
+  function castCannonLock(target){
+    if(!game||!skillMode||skillMode!=="炮火封锁")return;
+    const cannon=getPiece(selectedPieceId);
+    if(!cannon||!canLockFrom(game,cannon,target)){refs.battleNotice.textContent="封锁需要同一横线/纵线，炮架恰好一枚，且不能指定将帅。";return;}
+    const action=selectedActions.find(a=>a.kind==="lock"&&a.targetId===target.id);
+    if(!action){refs.battleNotice.textContent="该目标不合法或封锁会使己方将帅受将。";return;}
+    const advisor=findReadyAdvisor(target.side,game);
+    if(isPalace(target.side,target.x,target.y)&&advisor){
+      advisor.skills.find(s=>s.name==="辅弼护宫").used=true;
+      logEvent(`${target.name} 在九宫内受「辅弼护宫」庇护，抵消了炮火封锁。`,"black");
+      game.skillUsedTurn.red=true;game.board.find(p=>p.id===cannon.id).skills.find(s=>s.name==="炮火封锁").used=true;
+      endTurn();refs.battleNotice.textContent="辅弼护宫抵消技能；红方行动结束。";renderBattle();return;
+    }
+    executeAction(action);
+  }
+  function applyMove(action,state) {
+    const p=state.board.find(u=>u.id===action.pieceId);
+    if(!p)return null;
+    const captured=action.captureId?state.board.find(u=>u.id===action.captureId):null;
+    if(captured)state.board=state.board.filter(u=>u.id!==captured.id);
+    const from={x:p.x,y:p.y};p.x=action.to.x;p.y=action.to.y;
+    if(action.skillName){const sk=p.skills.find(s=>s.name===action.skillName);if(sk)sk.used=true;state.skillUsedTurn[p.side]=true;}
+    return {piece:p,captured,from};
+  }
+  function experienceLevel(skill) {
+    if(skill.level>=3)return 3;
+    if(skill.exp>=5)return 3;
+    if(skill.exp>=2)return 2;
+    return 1;
+  }
+  function inheritSkills(recipient,donor,state) {
+    if(!state.permanentSkills[recipient.id])state.permanentSkills[recipient.id]={};
+    const touched=state.permanentSkills[recipient.id];
+    donor.skills.forEach(incoming=>{
+      let own=recipient.skills.find(s=>s.name===incoming.name);
+      if(!own){own={...incoming};recipient.skills.push(own);}
+      else{
+        own.exp=Math.min(5,own.exp+incoming.exp);
+        own.level=Math.max(own.level,incoming.level,experienceLevel(own));
+      }
+      own.used=false;own.cooldown=0;own.availableFromPly=state.ply+2;
+      touched[own.name]={skill:{...own},acquiredAtPly:state.ply};
+    });
+    state.permanentLoss.push(donor.id);
+  }
+  function playActionVisual(action,kind) {
+    const board=refs.battleBoard;
+    const piece=getPiece(action.pieceId);
+    const target=action.captureId?getPiece(action.captureId):null;
+    if(!piece)return Promise.resolve();
+    const base=settings.animation===0?0:1/settings.animation;
+    if(base===0)return Promise.resolve();
+    if(kind==="sacrifice"){
+      refs.battleOverlay.innerHTML="";
+      refs.battleOverlay.classList.add("show");
+      const dim=document.createElement("div");dim.className="dim-field";refs.battleOverlay.appendChild(dim);
+      const makeRing=(x,y)=>{const r=document.createElement("div");r.className="focus-ring";r.style.left=`${(x+.5)/9*100}%`;r.style.top=`${(visualY(y)+.5)/11*100}%`;refs.battleOverlay.appendChild(r);};
+      makeRing(piece.x,piece.y);if(target)makeRing(target.x,target.y);
+      const line=document.createElement("div");line.className="ink-line";
+      if(target){const dx=(piece.x-target.x)*board.clientWidth/9,dy=(visualY(piece.y)-visualY(target.y))*board.clientHeight/11;const len=Math.hypot(dx,dy);line.style.left=`${(target.x+.5)/9*100}%`;line.style.top=`${(visualY(target.y)+.5)/11*100}%`;line.style.width=`${len}px`;line.style.transform=`rotate(${Math.atan2(dy,dx)}rad)`;}
+      refs.battleOverlay.appendChild(line);
+      addParticles(refs.battleOverlay,target?target.x:piece.x,target?target.y:piece.y,24);
+      const targetNode=board.querySelector(`[data-id="${CSS.escape(target?.id||"")}"]`);
+      if(targetNode)targetNode.classList.add("shatter");
+      refs.skipAnimation.hidden=false;
+      return waitAnimation(2400*base).then(()=>{refs.battleOverlay.classList.remove("show");refs.battleOverlay.innerHTML="";refs.skipAnimation.hidden=true;});
+    }
+    if(action.skillName){
+      refs.battleOverlay.innerHTML="";
+      refs.battleOverlay.classList.add("show");
+      const echo=document.createElement("div");echo.className="ink-echo";
+      const at=action.to||target||piece;echo.style.left=`${(at.x+.5)/9*100}%`;echo.style.top=`${(visualY(at.y)+.5)/11*100}%`;
+      refs.battleOverlay.appendChild(echo);
+      if(action.skillName==="炮火封锁"&&target){
+        const mark=document.createElement("div");mark.className="lock-mark";mark.textContent="锁";mark.style.left=`${(target.x+.5)/9*100}%`;mark.style.top=`${(visualY(target.y)+.5)/11*100}%`;mark.style.transform="translate(-50%,-50%)";refs.battleOverlay.appendChild(mark);
+      }
+      addParticles(refs.battleOverlay,at.x,at.y,8);
+      refs.skipAnimation.hidden=false;
+      return waitAnimation(Math.min(800,650)*base).then(()=>{refs.battleOverlay.classList.remove("show");refs.battleOverlay.innerHTML="";refs.skipAnimation.hidden=true;});
+    }
+    if(target){
+      const node=board.querySelector(`[data-id="${CSS.escape(target.id)}"]`);
+      if(node)node.classList.add("disappear");
+      addParticles(refs.battleOverlay,target.x,target.y,12);
+      refs.skipAnimation.hidden=false;
+      return waitAnimation(350*base).then(()=>{refs.skipAnimation.hidden=true;});
+    }
+    return Promise.resolve();
+  }
+  function addParticles(parent,x,y,count){
+    const limited=Math.min(30,count);
+    for(let i=0;i<limited;i++){
+      const dot=document.createElement("i");dot.className="particle";dot.style.left=`${(x+.5)/9*100}%`;dot.style.top=`${(visualY(y)+.5)/11*100}%`;
+      const angle=Math.PI*2*i/limited,r=16+(i%4)*5;
+      dot.style.setProperty("--dx",`${Math.cos(angle)*r}px`);dot.style.setProperty("--dy",`${Math.sin(angle)*r}px`);parent.appendChild(dot);
+    }
+  }
+  function waitAnimation(ms) {
+    if(skipCurrent){skipCurrent=false;return Promise.resolve();}
+    if(ms<=0)return Promise.resolve();
+    return new Promise(resolve=>{
+      finishTimer=resolve;
+      timer=setTimeout(()=>{timer=null;finishTimer=null;resolve();},ms);
+    });
+  }
+  function executeAction(action) {
+    if(!game||busy||game.result)return;
+    if(!legalize(game,[action],game.side).length){refs.battleNotice.textContent="行动未通过将帅安全校验，棋盘与技能状态均未改变。";return;}
+    const isSacrifice=action.kind==="move"&&action.captureId&&getPiece(action.captureId)?.side===game.side;
+    let moveTrail=null;
+    busy=true;renderBattle();
+    playActionVisual(action,isSacrifice?"sacrifice":"normal").then(()=>{
+      if(!game)return;
+      if(action.kind==="move"){
+        const moved=applyMove(action,game);
+        if(!moved){busy=false;return;}
+        const from=moved.from;
+        moveTrail={from,to:{x:moved.piece.x,y:moved.piece.y}};
+        game.history.push({pieceId:moved.piece.id,from,to:{x:moved.piece.x,y:moved.piece.y}});
+        if(isSacrifice){
+          const donor=moved.captured;
+          inheritSkills(moved.piece,donor,game);
+          logEvent(`${moved.piece.name} 由 ${coord(from.x,from.y)} 走至 ${coord(moved.piece.x,moved.piece.y)}，献祭 ${donor.name}；其技能已完整传承，永久退出时间线。`,game.side);
+          refs.battleNotice.textContent="献祭完成。传承技能本回合不可用，将在之后的己方回合启用。";
+        }else if(moved.captured){
+          if(game.permanentSkills[moved.captured.id])game.permanentLoss.push(moved.captured.id);
+          logEvent(`${moved.piece.name} 吃去 ${moved.captured.name}。`,game.side);
+        }else{
+          logEvent(`${moved.piece.name} ${coord(from.x,from.y)} → ${coord(moved.piece.x,moved.piece.y)}${action.skillName?` · ${action.skillName}`:""}。`,game.side);
+        }
+        if(action.skillName)refs.battleNotice.textContent=`「${action.skillName}」已发动，本回合主动技能额度消耗。`;
+      }else if(action.kind==="swap"){
+        const king=getPiece(action.kingId),advisor=getPiece(action.advisorId);
+        const old={x:king.x,y:king.y};king.x=advisor.x;king.y=advisor.y;advisor.x=old.x;advisor.y=old.y;
+        king.skills.find(s=>s.name==="移宫换防").used=true;game.skillUsedTurn[game.side]=true;
+        logEvent(`${king.name} 发动「移宫换防」，与${advisor.name}交换九宫位置。`,game.side);
+      }else if(action.kind==="lock"){
+        const cannon=getPiece(action.pieceId),target=getPiece(action.targetId);
+        const guardian=isPalace(target.side,target.x,target.y)?findReadyAdvisor(target.side,game):null;
+        const sk=cannon.skills.find(s=>s.name==="炮火封锁");sk.used=true;game.skillUsedTurn[game.side]=true;
+        if(guardian){
+          guardian.skills.find(s=>s.name==="辅弼护宫").used=true;
+          logEvent(`${target.name} 在九宫内受「辅弼护宫」庇护，抵消了炮火封锁。`,game.side==="red"?"black":"red");
+        }else{
+          game.locks[target.id]=game.ply+2;
+          logEvent(`${cannon.name} 发动「炮火封锁」，锁定 ${target.name} 至其下一回合结束。`,game.side);
+        }
+      }
+      selectedPieceId=null;selectedActions=[];skillMode=null;sacrificeMode=false;busy=false;
+      refs.battleOverlay.classList.remove("show");refs.battleOverlay.innerHTML="";
+      renderBattle();
+      if(moveTrail){
+        refs.battleOverlay.classList.add("show");
+        addInkTrail(moveTrail.from,moveTrail.to);
+        window.setTimeout(()=>{refs.battleOverlay.classList.remove("show");refs.battleOverlay.innerHTML="";},500);
+      }
+      endTurn();
+    }).catch(error=>{
+      console.error("行动动画失败",error);busy=false;refs.battleNotice.textContent="行动演出发生错误，棋局状态未执行。";renderBattle();
+    });
+  }
+  function endTurn() {
+    if(!game||game.result)return;
+    game.ply++;
+    const previous=game.side;
+    game.side=previous==="red"?"black":"red";
+    if(previous==="black")game.round++;
+    Object.keys(game.locks).forEach(id=>{if(game.ply>=game.locks[id])delete game.locks[id];});
+    game.skillUsedTurn[game.side]=false;
+    game.turnStarted=false;
+    if(game.side==="red")startTurn();
+    else {
+      renderBattle();
+      if(allLegalActions(game,"black").length)aiTimer=window.setTimeout(runAI,360);
+      else resolveNoMoves();
+    }
+  }
+  function startTurn() {
+    if(!game||game.result)return;
+    game.turnStarted=true;
+    if(game.side==="red"&&!isInCheck(game,"red")){
+      refs.battleNotice.textContent=game.saves.red?"红方行动开始。时序锚点已铭刻。":"红方行动开始；帅位安全时可铭刻本局存档点。";
+    }
+    renderBattle();resolveNoMoves();
+  }
+  function resolveNoMoves(){
+    if(!game||game.result)return;
+    const legal=allLegalActions(game,game.side);
+    if(legal.length)return;
+    const checked=isInCheck(game,game.side);
+    const reason=checked?"将死":"困毙";
+    const loser=game.side;
+    logEvent(`${sideName(loser)}${reason}。`,loser);
+    const save=game.saves[loser];
+    if(game.rewinds[loser]>0&&save){
+      showConfirm("死亡回溯",`${sideName(loser)}遭遇${reason}。是否消耗 1 次回溯，返回已铭刻的共同时间锚点？永久献祭与技能传承不会撤销。`,[
+        {label:"确认回溯",primary:true,run:()=>performRewind(loser)},
+        {label:"接受结局",run:()=>finishGame(loser==="red"?"black":"red",reason)}
+      ]);
+    }else finishGame(loser==="red"?"black":"red",reason);
+  }
+  function snapshotGame(){return deepCopy({board:game.board,side:game.side,round:game.round,ply:game.ply,skillUsedTurn:game.skillUsedTurn,locks:game.locks,log:game.log,history:game.history});}
+  function restoreSnapshot(snap) {
+    game.board=deepCopy(snap.board);game.side=snap.side;game.round=snap.round;game.ply=snap.ply;
+    game.skillUsedTurn=deepCopy(snap.skillUsedTurn);game.locks=deepCopy(snap.locks);game.log=deepCopy(snap.log);
+    game.history=deepCopy(snap.history||[]);
+    game.result=null;
+    game.permanentLoss=[...new Set(game.permanentLoss)];
+    game.board=game.board.filter(p=>!game.permanentLoss.includes(p.id));
+    Object.entries(game.permanentSkills).forEach(([unitId,skills])=>{
+      const unit=game.board.find(p=>p.id===unitId);if(!unit)return;
+      Object.entries(skills).forEach(([name,record])=>{
+        const existing=unit.skills.find(s=>s.name===name);
+        if(record.acquiredAtPly>=snap.ply){
+          const restored={...record.skill,used:false,cooldown:0,availableFromPly:snap.ply+2};
+          if(existing){existing.level=Math.max(existing.level,restored.level);existing.exp=Math.max(existing.exp,restored.exp);existing.used=false;existing.cooldown=0;existing.availableFromPly=snap.ply+2;}
+          else unit.skills.push(restored);
+        }
+      });
+    });
+  }
+  function performRewind(side) {
+    const save=game.saves[side];if(!save)return;
+    busy=true;const snapshot=deepCopy(save);game.rewinds[side]--;
+    const positions=new Map(game.board.map(p=>[p.id,{x:p.x,y:p.y}]));
+    refs.battleOverlay.innerHTML='<div class="dim-field"></div>';
+    refs.battleOverlay.classList.add("show");
+    addParticles(refs.battleOverlay,4,5,32);
+    refs.battleBoard.classList.add("rewinding");
+    refs.skipAnimation.hidden=false;
+    waitAnimation(settings.animation===0?0:1800/settings.animation).then(()=>{
+      restoreSnapshot(snapshot);
+      let trailCount=0;
+      game.board.forEach(p=>{
+        const from=positions.get(p.id);
+        if(from&&(from.x!==p.x||from.y!==p.y)&&trailCount<24){
+          addInkTrail(from,{x:p.x,y:p.y});
+          trailCount++;
+        }
+      });
+      game.log.push({time:`${String(game.round).padStart(2,"0")}.${String(game.ply).padStart(2,"0")}`,side,text:`死亡回溯完成。${sideName(side)}的棋盘复位；永久刻痕仍然存在。`});
+      refs.battleOverlay.classList.remove("show");refs.battleOverlay.innerHTML="";
+      refs.battleBoard.classList.remove("rewinding");refs.skipAnimation.hidden=true;busy=false;selectedPieceId=null;selectedActions=[];skillMode=null;sacrificeMode=false;
+      renderBattle();
+      if(game.side==="black")aiTimer=window.setTimeout(runAI,360);
+      else startTurn();
+    });
+  }
+  function finishGame(winner,reason) {
+    game.result={winner,reason};
+    refs.outcome.classList.remove("hidden");
+    refs.outcome.innerHTML=`<h2>${winner==="red"?"博士仍在棋局中":"特蕾西娅守住残局"}</h2><div class="subtle">${sideName(winner)}胜 · ${reason} · 本次演练结束。点击「重新开始」可重演残局。</div>`;
+    logEvent(`${sideName(winner)}获胜，结局：${reason}。`,winner);
+    renderBattle();
+  }
+  function logEvent(text,side=game?.side){
+    if(!game)return;
+    game.log.push({time:`${String(game.round).padStart(2,"0")}.${String(game.ply).padStart(2,"0")}`,side,text});
+    if(game.log.length>120)game.log.shift();
+  }
+  function showConfirm(title,text,options){
+    refs.modalTitle.textContent=title;refs.modalText.textContent=text;refs.modalActions.innerHTML="";
+    options.forEach(option=>{
+      const button=document.createElement("button");button.className=`btn${option.primary?" primary":""}`;button.textContent=option.label;
+      button.addEventListener("click",()=>{refs.modalBackdrop.classList.remove("open");option.run();});
+      refs.modalActions.appendChild(button);
+    });
+    refs.modalBackdrop.classList.add("open");
+  }
+  function setSavepoint(){
+    if(!game||game.side!=="red"||game.saves.red||isInCheck(game,"red")||busy||game.result)return;
+    showConfirm("铭刻时序锚点","保存当前双方棋子位置、技能次数、回合与状态。之后死亡回溯时，献祭与传承等永久刻痕不会被撤销。",[
+      {label:"取消",run:()=>{}},{label:"确认铭刻",primary:true,run:()=>{game.saves.red=snapshotGame();logEvent("博士铭刻了时序锚点。","red");refs.battleNotice.textContent="存档点已铭刻；此棋局不能更改存档。";renderBattle();}}
+    ]);
+  }
+  function runAI(){
+    aiTimer=null;
+    if(!game||game.side!=="black"||game.result||busy)return;
+    if(!game.saves.black&&!isInCheck(game,"black"))game.saves.black=snapshotGame();
+    const actions=allLegalActions(game,"black");
+    if(!actions.length){resolveNoMoves();return;}
+    const ranked=actions.map(a=>({a,score:evaluateAction(game,a,"black")}));
+    ranked.sort((a,b)=>b.score-a.score);
+    let choice;
+    if(settings.difficulty==="easy"){
+      const pool=ranked.slice(0,Math.max(1,Math.min(8,ranked.length)));
+      choice=pool[Math.floor(Math.random()*pool.length)].a;
+    }else if(settings.difficulty==="normal"){
+      choice=ranked[Math.min(ranked.length-1,Math.random()<.25?1:0)].a;
+    }else{
+      choice=chooseHardAction(ranked);
+    }
+    selectedPieceId=choice.pieceId||choice.kingId||null;
+    if(choice.kind==="lock")selectedPieceId=choice.pieceId;
+    selectedActions=[choice];
+    renderBattle();
+    executeAction(choice);
+  }
+  function applyActionToPosition(state,action,side){
+    if(action.kind==="move"){
+      applyMove(action,state);
+    }else if(action.kind==="lock"){
+      const cannon=state.board.find(p=>p.id===action.pieceId),target=state.board.find(p=>p.id===action.targetId);
+      if(!cannon||!target)return;
+      const skill=cannon.skills.find(s=>s.name==="炮火封锁");if(skill)skill.used=true;
+      state.skillUsedTurn[side]=true;state.locks[target.id]=state.ply+2;
+    }else if(action.kind==="swap"){
+      const king=state.board.find(p=>p.id===action.kingId),advisor=state.board.find(p=>p.id===action.advisorId);
+      if(!king||!advisor)return;
+      [king.x,advisor.x]=[advisor.x,king.x];[king.y,advisor.y]=[advisor.y,king.y];
+      const skill=king.skills.find(s=>s.name==="移宫换防");if(skill)skill.used=true;
+      state.skillUsedTurn[side]=true;
+    }
+  }
+  // 评估子力交换、受攻击棋子、将军、位置收益与技能价值。
+  function evaluateAction(state,action,side){
+    const sim=cloneForCheck(state),enemy=side==="red"?"black":"red";
+    let score=Math.random()*.05;
+    const victim=action.kind==="move"&&action.captureId?sim.board.find(p=>p.id===action.captureId):null;
+    const target=action.kind==="lock"?sim.board.find(p=>p.id===action.targetId):null;
+    const moving=action.kind==="move"?sim.board.find(p=>p.id===action.pieceId):null;
+    const oldPosition=moving?{x:moving.x,y:moving.y}:null;
+    if(victim)score+=TYPES[victim.type].value*1.05;
+    if(action.kind==="lock"&&target){
+      const available=target.skills.some(s=>!s.used&&s.name!=="辅弼护宫");
+      score+=available?Math.min(TYPES[target.type].value*.16,15):2;
+    }
+    applyActionToPosition(sim,action,side);
+    if(moving&&oldPosition){
+      const centerBefore=Math.abs(oldPosition.x-4),centerAfter=Math.abs(moving.x-4);
+      const advancementBefore=side==="red"?9-oldPosition.y:oldPosition.y;
+      const advancementAfter=side==="red"?9-moving.y:moving.y;
+      score+=(centerBefore-centerAfter)*.45+(advancementAfter-advancementBefore)*.16;
+      if(isAttacked(sim,moving.x,moving.y,enemy))
+        score-=TYPES[moving.type].value*(isAttacked(sim,moving.x,moving.y,side)?.24:.7);
+    }
+    if(action.skillName)score+=({"踏镫跃击":3,"透眼穿行":2,"急行军":3,"长驱突进":.5,"移宫换防":2,"炮火封锁":4}[action.skillName]||0);
+    if(isInCheck(sim,enemy)){
+      score+=22;
+      if(!allLegalActions(sim,enemy).length)score+=100000;
+    }
+    if(isInCheck(sim,side))score-=10000;
+    return score;
+  }
+  function chooseHardAction(ranked){
+    let best=null,bestScore=-Infinity;
+    for(const item of ranked.slice(0,14)){
+      const sim=cloneForCheck(game);
+      applyActionToPosition(sim,item.a,"black");
+      const replies=allLegalActions(sim,"red");
+      let strongestReply=-Infinity;
+      for(const reply of replies){
+        const replyScore=evaluateAction(sim,reply,"red");
+        if(replyScore>strongestReply)strongestReply=replyScore;
+      }
+      if(!replies.length)strongestReply=-100000;
+      const score=item.score-strongestReply*.72;
+      if(score>bestScore){bestScore=score;best=item.a;}
+    }
+    return best||ranked[0].a;
+  }
+  function addInkTrail(from,to){
+    const overlay=refs.battleOverlay;
+    const dx=(to.x-from.x)*refs.battleBoard.clientWidth/9,dy=(visualY(to.y)-visualY(from.y))*refs.battleBoard.clientHeight/11;
+    const trail=document.createElement("div");trail.className="ink-line";trail.style.opacity=".4";
+    trail.style.left=`${(from.x+.5)/9*100}%`;trail.style.top=`${(visualY(from.y)+.5)/11*100}%`;trail.style.width=`${Math.hypot(dx,dy)}px`;trail.style.transform=`rotate(${Math.atan2(dy,dx)}rad)`;
+    overlay.appendChild(trail);window.setTimeout(()=>trail.remove(),500);
+  }
+  function playClick(){
+    if(!settings.sound)return;
+    try{
+      audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();
+      const oscillator=audioCtx.createOscillator(),gain=audioCtx.createGain();
+      oscillator.type="sine";oscillator.frequency.value=560;gain.gain.setValueAtTime(.035,audioCtx.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.055);
+      oscillator.connect(gain);gain.connect(audioCtx.destination);oscillator.start();oscillator.stop(audioCtx.currentTime+.06);
+    }catch(error){console.warn("音效不可用",error);}
+  }
+
+  function toggleSacrifice(){
+    if(!game||game.side!=="red"||busy||game.result)return;
+    sacrificeMode=!sacrificeMode;skillMode=null;
+    if(!sacrificeMode){selectedActions=selectedPieceId?getLegalActions(game,selectedPieceId):[];}
+    else if(selectedPieceId)selectedActions=getLegalActions(game,selectedPieceId,{sacrifice:true});
+    refs.battleNotice.textContent=sacrificeMode?"献祭模式开启：按献祭者的正常象棋走法选择己方非将帅目标。":"献祭模式已关闭。";
+    renderBattle();
+  }
+  function cancelModes(){
+    sacrificeMode=false;skillMode=null;selectedActions=selectedPieceId?getLegalActions(game,selectedPieceId):[];
+    renderBattle();
+  }
+  function reset(){
+    if(aiTimer){clearTimeout(aiTimer);aiTimer=null;}
+    if(busy){skipCurrent=true;if(timer){clearTimeout(timer);timer=null;}if(finishTimer){finishTimer();finishTimer=null;}busy=false;}
+    game=null;selectedPieceId=null;skillMode=null;sacrificeMode=false;selectedModule=null;selectedModuleInfo=null;
+    buildAssignments.clear();remainingBudget=12;buildCells=[];battleCells=[];
+    refs.battleStage.classList.remove("active");refs.buildStage.classList.add("active");
+    refs.battleBoard.innerHTML="";refs.board.innerHTML="";renderBuilder();updateStatus();
+    skipCurrent=false;refs.skipAnimation.hidden=true;
+    refs.buildNotice.textContent="帅/将自动配置；士不装配模块。";refs.modalBackdrop.classList.remove("open");
+  }
+
+  refs.startGame.addEventListener("click",()=>createGame());
+  refs.clearBuild.addEventListener("click",()=>{buildAssignments.clear();remainingBudget=12;selectedModule=null;renderBuilder();refs.buildNotice.textContent="构筑已清空，预算已返还。";});
+  refs.setSave.addEventListener("click",setSavepoint);
+  refs.sacrificeToggle.addEventListener("click",toggleSacrifice);
+  refs.cancelSacrifice.addEventListener("click",()=>{selectedModule=null;renderBuilder();});
+  refs.battleCancelSacrifice.addEventListener("click",toggleSacrifice);
+  refs.cancelSkill.addEventListener("click",cancelModes);
+  refs.skipAnimation.addEventListener("click",()=>{if(timer){clearTimeout(timer);timer=null;}if(finishTimer){const done=finishTimer;finishTimer=null;done();}});
+  refs.restart.addEventListener("click",()=>showConfirm("重新开始残局","当前局面与尚未完成的构筑将被清空，是否重新开始？",[
+    {label:"继续当前",run:()=>{}},{label:"重新开始",primary:true,run:reset}
+  ]));
+  refs.animationSetting.addEventListener("change",()=>{settings.animation=Number(refs.animationSetting.value);document.documentElement.style.setProperty("--anim-time",settings.animation===0?0:1/settings.animation);document.body.classList.toggle("motion-off",settings.animation===0);});
+  refs.soundSetting.addEventListener("change",()=>{settings.sound=refs.soundSetting.checked;});
+  refs.difficulty.addEventListener("change",()=>{settings.difficulty=refs.difficulty.value;});
+
+  // 以本局回合的落点控制技能模式与吃子模式，避免技能失败时误扣次数。
+  function setup(){
+    buildCells=renderSquares(refs.board,"build");
+    renderSquares(refs.battleBoard,"battle");
+    refs.battleBoard.querySelectorAll(".cell").forEach(c=>{
+      c.ondragover=e=>e.preventDefault();
+      c.ondrop=e=>e.preventDefault();
+    });
+    renderBuilder();updateStatus();
+  }
+  setup();
+})();
+</script>
+</body>
+</html>
